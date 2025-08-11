@@ -49,8 +49,7 @@ Converts a raw token amount (u64) into a UI-displayable string, respecting the t
 
 **Accounts:**
 - `token_program_id`: Must be the `Token-2022` program ID.
-- `account`: The token account to read the balance from.
-- `mint`: The mint account for the token.
+- `account`: The mint account to read the balance from.
 
 ## Getting Started
 
