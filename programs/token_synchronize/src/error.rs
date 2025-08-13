@@ -22,4 +22,13 @@ pub enum ErrorCode {
 
     #[msg("TokenSynchronize: Delegate and authority must be the same")]
     DelegateNotAuthority,
+
+    #[msg("TokenSynchronize: Invalid authority")]
+    InvalidAuthority,
+
+    #[msg("TokenSynchronize: Invalid authority type")]
+    InvalidAuthorityType,
+
+    #[msg("TokenSynchronize: Token 2022's transfer function is deprecated")]
+    Token2022TransferDeprecated,
 }
