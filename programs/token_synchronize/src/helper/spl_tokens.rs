@@ -77,25 +77,25 @@ pub fn transfer<'info>(
         _id if _id == spl_token_2022::ID => {
             let _mint = StateWithExtensions::<Mint>::unpack(_data.as_ref())?;
 
-            if let Ok(_mint_config) = _mint.get_extension::<TransferFeeConfig>() {
-                let (_basis_points, _max_fee): (u16, u64) = if Clock::get()?.epoch >= _mint_config.newer_transfer_fee.epoch.into() {
+            if let Ok(_mint_transfer_fee) = _mint.get_extension::<TransferFeeConfig>() {
+                let (_basis_points, _max_fee): (u16, u64) = if Clock::get()?.epoch >= _mint_transfer_fee.newer_transfer_fee.epoch.into() {
                     (
-                        _mint_config
+                        _mint_transfer_fee
                             .newer_transfer_fee
                             .transfer_fee_basis_points
                             .into(),
-                        _mint_config
+                        _mint_transfer_fee
                             .newer_transfer_fee
                             .maximum_fee
                             .into(),
                     )
                 } else {
                     (
-                        _mint_config
+                        _mint_transfer_fee
                             .older_transfer_fee
                             .transfer_fee_basis_points
                             .into(),
-                        _mint_config
+                        _mint_transfer_fee
                             .older_transfer_fee
                             .maximum_fee
                             .into(),

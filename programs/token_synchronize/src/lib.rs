@@ -35,10 +35,10 @@ mod token_synchronize {
         ctx: Context<'_, '_, '_, 'info, TransferCheckedContext<'info>>,
         amount: u64,
     ) -> Result<()> {
-        crate::helper::spl_tokens::transfer_without_mint(
+        crate::helper::spl_tokens::transfer(
             &ctx.accounts.token_program_id,
             &ctx.accounts.from,
-            // &ctx.accounts.mint,
+            &ctx.accounts.mint,
             &ctx.accounts.to,
             &ctx.accounts.authority,
             &[],
