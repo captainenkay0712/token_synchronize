@@ -132,20 +132,20 @@ pub fn transfer<'info>(
             if let Ok(_mint_transfer_hook) = _mint.get_extension::<TransferHook>() {
                 require!(!extra_accounts.is_empty(), ErrorCode::InvalidExtraAccounts);
 
-                let hook_program_ai = &extra_accounts[0];
-                require_keys_eq!(*hook_program_ai.key, _mint_transfer_hook.program_id.0, ErrorCode::InvalidExtraAccounts);
-                require!(hook_program_ai.executable, ErrorCode::InvalidExtraAccounts);
+                let _hook_program_ai = &extra_accounts[0];
+                require_keys_eq!(*_hook_program_ai.key, _mint_transfer_hook.program_id.0, ErrorCode::InvalidExtraAccounts);
+                require!(_hook_program_ai.executable, ErrorCode::InvalidExtraAccounts);
 
-                let mut metas = _ix.accounts.clone();
+                let mut _metas = _ix.accounts.clone();
                 for acc in extra_accounts.iter() {
                     if acc.is_writable {
-                        metas.push(AccountMeta::new(*acc.key, acc.is_signer));
+                        _metas.push(AccountMeta::new(*acc.key, acc.is_signer));
                     } else {
-                        metas.push(AccountMeta::new_readonly(*acc.key, acc.is_signer));
+                        _metas.push(AccountMeta::new_readonly(*acc.key, acc.is_signer));
                     }
                 }
 
-                _ix.accounts = metas;
+                _ix.accounts = _metas;
                 _infos.extend(extra_accounts.iter().cloned());
             }
         }
