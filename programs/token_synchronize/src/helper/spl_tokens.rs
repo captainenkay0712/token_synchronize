@@ -137,11 +137,10 @@ pub fn transfer<'info>(
                 require!(_hook_program_ai.executable, ErrorCode::InvalidExtraAccounts);
 
                 let mut _metas = _ix.accounts.clone();
-                for acc in extra_accounts.iter() {
-                    if acc.is_writable {
-                        _metas.push(AccountMeta::new(*acc.key, acc.is_signer));
-                    } else {
-                        _metas.push(AccountMeta::new_readonly(*acc.key, acc.is_signer));
+                for _account in extra_accounts.iter() {
+                    match _account.is_writable {
+                        true => _metas.push(AccountMeta::new(*_account.key, _account.is_signer)),
+                        false => _metas.push(AccountMeta::new_readonly(*_account.key, _account.is_signer)),
                     }
                 }
 
