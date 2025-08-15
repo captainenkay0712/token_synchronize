@@ -115,7 +115,6 @@ pub fn transfer<'info>(
         for _signer in signer_accounts.iter() {
             require!(_signer.is_signer, ErrorCode::MissingSigner);
         }
-
         _infos.extend(signer_accounts.iter().cloned());
     }
 
