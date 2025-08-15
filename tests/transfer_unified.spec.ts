@@ -323,6 +323,7 @@ describe("transfer_unified", () => {
       .remainingAccounts([
         { pubkey: customTransferHookProgram.programId, isWritable: false, isSigner: false },
         { pubkey: extraAccountMetaList, isWritable: false, isSigner: false },
+        { pubkey: wallet.publicKey, isWritable: false, isSigner: false },
       ])
       .rpc();
 
@@ -424,6 +425,7 @@ describe("transfer_unified", () => {
       .remainingAccounts([
         { pubkey: customTransferHookProgram.programId, isWritable: false, isSigner: false },
         { pubkey: extraAccountMetaList, isWritable: false, isSigner: false },
+        { pubkey: wallet.publicKey, isWritable: false, isSigner: false },
       ])
       .rpc();
 

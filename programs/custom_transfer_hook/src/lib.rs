@@ -12,7 +12,17 @@ pub mod custom_transfer_hook {
     pub fn initialize_extra_account_meta_list(
         ctx: Context<InitializeExtraAccountMetaList>,
     ) -> Result<()> {
-        let account_metas = vec![]; // No extra accounts in this example
+        // Populate the ExtraAccountMetaList so Token-2022 forwards our desired
+        // additional account (we'll use the payer as the "config" account in tests).
+        // NOTE: The payer here is the wallet public key used in tests.
+        use spl_tlv_account_resolution::account::ExtraAccountMeta;
+
+        let config_pubkey = ctx.accounts.payer.key();
+        let account_metas = vec![
+            // Require the specific pubkey so the token program forwards it to the hook CPI.
+            // We don't require it to be signer/writable for this simple logging demo.
+            ExtraAccountMeta::new_with_pubkey(&config_pubkey, false, false)?,
+        ];
 
         let mut account_data = ctx.accounts.extra_account_meta_list.try_borrow_mut_data()?;
         ExtraAccountMetaList::init::<ExecuteInstruction>(&mut account_data, &account_metas)?;
@@ -20,8 +30,10 @@ pub mod custom_transfer_hook {
         Ok(())
     }
 
-    pub fn transfer_hook(_ctx: Context<TransferHook>, _amount: u64) -> Result<()> {
+    pub fn transfer_hook(ctx: Context<TransferHook>, _amount: u64) -> Result<()> {
         msg!("Custom transfer hook invoked!");
+
+        msg!("Config account: {}", ctx.accounts.config.key());
         Ok(())
     }
 
@@ -54,6 +66,8 @@ pub struct TransferHook<'info> {
     /// CHECK: ExtraAccountMetaList PDA
     #[account(seeds = [b"extra-account-metas", mint.key().as_ref()], bump)]
     pub extra_account_meta_list: AccountInfo<'info>,
+    /// CHECK: Optional extra config account resolved/passed by caller
+    pub config: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -64,7 +78,8 @@ pub struct InitializeExtraAccountMetaList<'info> {
     #[account(
         init,
         payer = payer,
-        space = 8 + ExtraAccountMetaList::size_of(0).unwrap(),
+        // Reserve space for up to 2 extra accounts to be added later
+        space = 8 + ExtraAccountMetaList::size_of(2).unwrap(),
         seeds = [b"extra-account-metas", mint.key().as_ref()],
         bump
     )]
