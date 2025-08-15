@@ -1,6 +1,9 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::{
-    instruction::Instruction,
+    instruction::{
+        AccountMeta,
+        Instruction,
+    },
     program::invoke,
     program::invoke_signed,
     program_pack::Pack,
@@ -23,6 +26,58 @@ use std::cmp::min;
 
 use crate::error::ErrorCode;
 
+fn compute_expected_fee(_mint_transfer_fee: &TransferFeeConfig, amount: u64) -> Result<u64> {
+    let current_epoch: u64 = Clock::get()?.epoch.into();
+    let (_basis_points, _max_fee): (u16, u64) = if current_epoch >= _mint_transfer_fee.newer_transfer_fee.epoch.into() {
+        (
+            _mint_transfer_fee
+                .newer_transfer_fee
+                .transfer_fee_basis_points
+                .into(),
+            _mint_transfer_fee
+                .newer_transfer_fee
+                .maximum_fee
+                .into(),
+        )
+    } else {
+        (
+            _mint_transfer_fee
+                .older_transfer_fee
+                .transfer_fee_basis_points
+                .into(),
+            _mint_transfer_fee
+                .older_transfer_fee
+                .maximum_fee
+                .into(),
+        )
+    };
+
+    let _raw_fee = (amount as u128) * (_basis_points as u128) / (10_000 as u128);
+    let _expected_fee = min(_raw_fee as u64, _max_fee);
+    Ok(_expected_fee)
+}
+
+fn append_hook_accounts<'info>(ix: &mut Instruction, infos: &mut Vec<AccountInfo<'info>>, extra_accounts: &[AccountInfo<'info>], hook_program_id: &Pubkey) -> Result<()> {
+    require!(!extra_accounts.is_empty(), ErrorCode::InvalidExtraAccounts);
+
+    let _hook_program_ai = &extra_accounts[0];
+    require_keys_eq!(*_hook_program_ai.key, *hook_program_id, ErrorCode::InvalidExtraAccounts);
+    require!(_hook_program_ai.executable, ErrorCode::InvalidExtraAccounts);
+
+    let mut _metas = ix.accounts.clone();
+    for _account in extra_accounts.iter() {
+        match _account.is_writable {
+            true => _metas.push(AccountMeta::new(*_account.key, _account.is_signer)),
+            false => _metas.push(AccountMeta::new_readonly(*_account.key, _account.is_signer)),
+        }
+    }
+
+    ix.accounts = _metas;
+    infos.extend_from_slice(extra_accounts);
+
+    Ok(())
+}
+
 pub fn transfer<'info>(
     token_program_id: &AccountInfo<'info>,
     source: &AccountInfo<'info>,
@@ -34,10 +89,12 @@ pub fn transfer<'info>(
     authority_seeds: &[&[&[u8]]],
     extra_accounts: &[AccountInfo<'info>]
 ) -> Result<()> {
-    require_eq!(mint.owner, token_program_id.key, ErrorCode::InvalidTokenProgram);
+    if amount == 0 {
+        return Ok(());
+    }
+    let _pid = token_program_id.key();
 
-    let _signer_keys: Vec<Pubkey> = signer_accounts.iter().map(|a: &AccountInfo<'info>| *a.key).collect();
-    let _signer_pubkeys: Vec<&Pubkey> = _signer_keys.iter().collect();
+    require_eq!(*mint.owner, _pid, ErrorCode::InvalidTokenProgram);
 
     let mut _ix: Instruction;
     let mut _infos: Vec<AccountInfo<'info>> = vec![
@@ -46,6 +103,9 @@ pub fn transfer<'info>(
         destination.clone(),
         authority.clone(),
     ];
+
+    let _signer_keys: Vec<Pubkey> = signer_accounts.iter().map(|a: &AccountInfo<'info>| *a.key).collect();
+    let _signer_pubkeys: Vec<&Pubkey> = _signer_keys.iter().collect();
 
     if signer_accounts.is_empty(){
         require!(authority.is_signer, ErrorCode::AuthorityNotSigner);
@@ -59,12 +119,12 @@ pub fn transfer<'info>(
 
     let _data = mint.try_borrow_data()?;
 
-    match token_program_id.key() {
+    match _pid {
         _id if _id == spl_token::ID => {
             let _mint = spl_token::state::Mint::unpack(_data.as_ref())?;
 
             _ix = spl_token::instruction::transfer_checked(
-                &token_program_id.key(),
+                &_pid,
                 &source.key(),
                 &mint.key(),
                 &destination.key(),
@@ -78,35 +138,8 @@ pub fn transfer<'info>(
             let _mint = StateWithExtensions::<Mint>::unpack(_data.as_ref())?;
 
             if let Ok(_mint_transfer_fee) = _mint.get_extension::<TransferFeeConfig>() {
-                let (_basis_points, _max_fee): (u16, u64) = if Clock::get()?.epoch >= _mint_transfer_fee.newer_transfer_fee.epoch.into() {
-                    (
-                        _mint_transfer_fee
-                            .newer_transfer_fee
-                            .transfer_fee_basis_points
-                            .into(),
-                        _mint_transfer_fee
-                            .newer_transfer_fee
-                            .maximum_fee
-                            .into(),
-                    )
-                } else {
-                    (
-                        _mint_transfer_fee
-                            .older_transfer_fee
-                            .transfer_fee_basis_points
-                            .into(),
-                        _mint_transfer_fee
-                            .older_transfer_fee
-                            .maximum_fee
-                            .into(),
-                    )
-                };
-
-                let _raw_fee = (amount as u128) * (_basis_points as u128) / (10_000 as u128);
-                let _expected_fee = min(_raw_fee as u64, _max_fee);
-
                 _ix = spl_token_2022::extension::transfer_fee::instruction::transfer_checked_with_fee(
-                    &token_program_id.key(),
+                    &_pid,
                     &source.key(),
                     &mint.key(),
                     &destination.key(),
@@ -114,11 +147,11 @@ pub fn transfer<'info>(
                     &_signer_pubkeys,
                     amount,
                     _mint.base.decimals,
-                    _expected_fee,
+                    compute_expected_fee(_mint_transfer_fee, amount)?,
                 )?;
             } else {
                 _ix = spl_token_2022::instruction::transfer_checked(
-                    &token_program_id.key(),
+                    &_pid,
                     &source.key(),
                     &mint.key(),
                     &destination.key(),
@@ -130,22 +163,7 @@ pub fn transfer<'info>(
             }
 
             if let Ok(_mint_transfer_hook) = _mint.get_extension::<TransferHook>() {
-                require!(!extra_accounts.is_empty(), ErrorCode::InvalidExtraAccounts);
-
-                let _hook_program_ai = &extra_accounts[0];
-                require_keys_eq!(*_hook_program_ai.key, _mint_transfer_hook.program_id.0, ErrorCode::InvalidExtraAccounts);
-                require!(_hook_program_ai.executable, ErrorCode::InvalidExtraAccounts);
-
-                let mut _metas = _ix.accounts.clone();
-                for _account in extra_accounts.iter() {
-                    match _account.is_writable {
-                        true => _metas.push(AccountMeta::new(*_account.key, _account.is_signer)),
-                        false => _metas.push(AccountMeta::new_readonly(*_account.key, _account.is_signer)),
-                    }
-                }
-
-                _ix.accounts = _metas;
-                _infos.extend(extra_accounts.iter().cloned());
+                append_hook_accounts(&mut _ix, &mut _infos, &extra_accounts, &_mint_transfer_hook.program_id.0)?;
             }
         }
         _ => return Err(error!(ErrorCode::InvalidTokenProgram)),
