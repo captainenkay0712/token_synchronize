@@ -26,26 +26,26 @@ use std::cmp::min;
 
 use crate::error::ErrorCode;
 
-fn compute_expected_fee(_mint_transfer_fee: &TransferFeeConfig, amount: u64) -> Result<u64> {
-    let current_epoch: u64 = Clock::get()?.epoch.into();
-    let (_basis_points, _max_fee): (u16, u64) = if current_epoch >= _mint_transfer_fee.newer_transfer_fee.epoch.into() {
+fn compute_expected_fee(mint_transfer_fee: &TransferFeeConfig, amount: u64) -> Result<u64> {
+    let _current_epoch: u64 = Clock::get()?.epoch.into();
+    let (_basis_points, _max_fee): (u16, u64) = if _current_epoch >= mint_transfer_fee.newer_transfer_fee.epoch.into() {
         (
-            _mint_transfer_fee
+            mint_transfer_fee
                 .newer_transfer_fee
                 .transfer_fee_basis_points
                 .into(),
-            _mint_transfer_fee
+                mint_transfer_fee
                 .newer_transfer_fee
                 .maximum_fee
                 .into(),
         )
     } else {
         (
-            _mint_transfer_fee
+            mint_transfer_fee
                 .older_transfer_fee
                 .transfer_fee_basis_points
                 .into(),
-            _mint_transfer_fee
+                mint_transfer_fee
                 .older_transfer_fee
                 .maximum_fee
                 .into(),
