@@ -43,41 +43,6 @@ See tests in `tests/transfer_unified.spec.ts` covering:
 - Token-2022 + Transfer Hook
 - Token-2022 + Transfer Fee + Transfer Hook
 
-### `approve`
-Delegates authority to another account to spend a specified amount of tokens.
-
-**Accounts:**
-- `token_program_id`: The program ID of the token standard (`Token` or `Token-2022`).
-- `to`: The token account to delegate authority from.
-- `delegate`: The account to delegate authority to.
-- `authority`: The owner of the `to` account.
-
-### `approve_checked`
-Similar to `approve`, but includes a check for the token's decimal precision.
-
-**Accounts:**
-- `token_program_id`: The program ID of the token standard (`Token` or `Token-2022`).
-- `to`: The token account to delegate authority from.
-- `mint`: The mint account for the token.
-- `delegate`: The account to delegate authority to.
-- `authority`: The owner of the `to` account.
-
-### `burn`
-Burns a specified amount of tokens from an account that has delegated authority to the caller.
-
-**Accounts:**
-- `token_program_id`: The program ID of the token standard (`Token` or `Token-2022`).
-- `mint`: The mint account for the token.
-- `from`: The token account to burn tokens from.
-- `authority`: The delegated authority for the `from` account.
-
-### `amount_to_ui_amount` (View Function)
-Converts a raw token amount (u64) into a UI-displayable string, respecting the token's decimals. This is a read-only view function that uses a CPI to the Token-2022 program.
-
-**Accounts:**
-- `token_program_id`: Must be the `Token-2022` program ID.
-- `account`: The mint account to read the balance from.
-
 ## Getting Started
 
 ### Prerequisites
