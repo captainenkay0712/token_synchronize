@@ -4,9 +4,15 @@ pub mod helper;
 pub mod error;
 
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::{
+    program::invoke,
+    program::invoke_signed,
+    system_instruction,
+    system_program,
+};
 use anchor_spl::{token, token_2022, token_2022_extensions};
 use std::convert::TryFrom;
-use spl_token_2022::extension::ExtensionType;
+// use spl_token_2022::extension::ExtensionType;
 
 use crate::context::*;
 use crate::cpi::*;
@@ -24,6 +30,28 @@ mod token_synchronize {
 
     use super::*;
 
+
+    // --- Transfer Different Token Program Instructions ---
+    pub fn transfer_unified<'info>(
+        ctx: Context<'_, '_, '_, 'info, TransferCheckedContext<'info>>,
+        amount: u64,
+    ) -> Result<()> {
+        crate::helper::spl_tokens::transfer(
+            &ctx.accounts.token_program_id,
+            &ctx.accounts.from,
+            &ctx.accounts.mint,
+            &ctx.accounts.to,
+            &ctx.accounts.authority,
+            &[],
+            amount,
+            &[],
+            &ctx.remaining_accounts
+        )?;
+
+        Ok(())
+    }
+
+    // --- Default Instructions ---
     pub fn amount_to_ui_amount(ctx: Context<AmountToUiAmountContext>, amount: u64) -> Result<String> {
         let _token_program_id: Pubkey = ctx.accounts.token_program_id.key();    
         let _cpi_program = ctx.accounts.token_program_id.to_account_info();
@@ -248,32 +276,6 @@ mod token_synchronize {
         }
 
         Ok(())
-    }
-
-    pub fn get_account_data_size(
-        ctx: Context<GetAccountDataSizeContext>,
-        extension_types: Vec<u16>,
-    ) -> Result<u64> {
-        let _token_program_id: Pubkey = ctx.accounts.token_program_id.key();    
-        let _cpi_program = ctx.accounts.token_program_id.to_account_info();
-
-        if _token_program_id != token_2022::ID {
-            return Err(error!(ErrorCode::InvalidTokenProgram));
-        }
-
-        let _accounts = token_2022::GetAccountDataSize {
-            mint: ctx.accounts.mint.to_account_info(),
-        };
-
-        let _cpi_ctx = CpiContext::new(_cpi_program, _accounts);
-
-        let _parsed_extensions: Vec<ExtensionType> = extension_types
-            .into_iter()
-            .filter_map(|b| ExtensionType::try_from(b).ok())
-            .collect();
-
-        let _result = token_2022::get_account_data_size(_cpi_ctx, &_parsed_extensions)?;
-       Ok(_result)
     }
 
     pub fn initialize_account(
@@ -533,7 +535,7 @@ mod token_synchronize {
 
         match _token_program_id {
             _id if _id == token::ID => {
-                let _authority_type_converted = parse_authority_type(authority_type)?;
+                let _authority_type_converted = parse_type::parse_authority_type(authority_type)?;
 
                 let _accounts = token::SetAuthority {
                     current_authority: ctx.accounts.current_authority.to_account_info(),
@@ -542,7 +544,7 @@ mod token_synchronize {
                 set_authority_cpi(_cpi_program, _accounts, _authority_type_converted, new_authority, authority_seeds.as_ref(), |_ctx, auth_type, new_auth| token::set_authority(_ctx, auth_type, new_auth))?;
             }
             _id if _id == token_2022::ID => {
-                let _authority_type_converted = parse_authority_type_2022(authority_type)?;
+                let _authority_type_converted = parse_type::parse_authority_type_2022(authority_type)?;
                 let _accounts = token_2022::SetAuthority {
                     current_authority: ctx.accounts.current_authority.to_account_info(),
                     account_or_mint: ctx.accounts.account_or_mint.to_account_info(),
@@ -629,6 +631,33 @@ mod token_synchronize {
                 token_cpi(_cpi_program, _accounts, Some(amount), None, None, authority_seeds.as_ref(), |_ctx, amount, _, _| token::transfer(_ctx, amount.unwrap()))?;
             }
             _id if _id == token_2022::ID => return Err(error!(ErrorCode::Token2022TransferDeprecated)),
+            _id if _id == system_program::ID => {
+                let _transfer_instruction = system_instruction::transfer(
+                    ctx.accounts.from.key,
+                    ctx.accounts.to.key,
+                    amount,
+                );
+
+                let _account_infos = &[
+                    ctx.accounts.from.to_account_info(),
+                    ctx.accounts.to.to_account_info(),
+                ];
+
+                if let Some(seeds) = authority_seeds {
+                    let seeds_vec: Vec<&[u8]> = seeds.iter().map(|s| s.as_slice()).collect();
+            
+                    invoke_signed(
+                        &_transfer_instruction,
+                        _account_infos,
+                        &[&seeds_vec[..]],
+                    )?;
+                } else {
+                    invoke(
+                        &_transfer_instruction,
+                        _account_infos,
+                    )?;
+                }
+            },
             _ => return Err(error!(ErrorCode::InvalidTokenProgram)),
         }
 
@@ -678,6 +707,68 @@ mod token_synchronize {
             },
             _ => return Err(error!(ErrorCode::InvalidTokenProgram)),
         }
+
+        Ok(())
+    }
+
+    pub fn ui_amount_to_amount(ctx: Context<UiAmountToAmountContext>, ui_amount: String) -> Result<u64> {
+        let _token_program_id: Pubkey = ctx.accounts.token_program_id.key();    
+        let _cpi_program = ctx.accounts.token_program_id.to_account_info();
+
+        if _token_program_id != token_2022::ID {
+            return Err(error!(ErrorCode::InvalidTokenProgram));
+        }
+
+        let _accounts = token_2022::UiAmountToAmount {
+            account: ctx.accounts.account.to_account_info(),
+        };
+
+        let _cpi_ctx = CpiContext::new(_cpi_program, _accounts);
+
+        let _result = token_2022::ui_amount_to_amount(_cpi_ctx, &ui_amount)?;
+        Ok(_result)
+    }
+
+    // --- Token 2022 Extensions Instructions ---
+    // CPI Guard
+    pub fn cpi_guard_disable(
+        ctx: Context<CpiGuardContext>,
+        authority_seeds: Option<Vec<Vec<u8>>>
+    ) -> Result<()> {
+        let _token_program_id: Pubkey = ctx.accounts.token_program_id.key();
+        let _cpi_program = ctx.accounts.token_program_id.to_account_info();
+
+        if _token_program_id != token_2022::ID {
+            return Err(error!(ErrorCode::InvalidTokenProgram));
+        }
+        
+        let _accounts = token_2022_extensions::cpi_guard::CpiGuard {
+            token_program_id: ctx.accounts.token_program_id.to_account_info(),
+            account: ctx.accounts.account.to_account_info(),
+            owner: ctx.accounts.owner.to_account_info(),
+        };
+        token_cpi(_cpi_program, _accounts, None, None, None, authority_seeds.as_ref(), |_ctx, _, _, _| token_2022_extensions::cpi_guard::cpi_guard_disable(_ctx))?;
+
+        Ok(())
+    }
+
+    pub fn cpi_guard_enable(
+        ctx: Context<CpiGuardContext>,
+        authority_seeds: Option<Vec<Vec<u8>>>
+    ) -> Result<()> {
+        let _token_program_id: Pubkey = ctx.accounts.token_program_id.key();
+        let _cpi_program = ctx.accounts.token_program_id.to_account_info();
+
+        if _token_program_id != token_2022::ID {
+            return Err(error!(ErrorCode::InvalidTokenProgram));
+        }
+        
+        let _accounts = token_2022_extensions::cpi_guard::CpiGuard {
+            token_program_id: ctx.accounts.token_program_id.to_account_info(),
+            account: ctx.accounts.account.to_account_info(),
+            owner: ctx.accounts.owner.to_account_info(),
+        };
+        token_cpi(_cpi_program, _accounts, None, None, None, authority_seeds.as_ref(), |_ctx, _, _, _| token_2022_extensions::cpi_guard::cpi_guard_enable(_ctx))?;
 
         Ok(())
     }

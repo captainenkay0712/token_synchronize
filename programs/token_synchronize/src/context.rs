@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{TokenAccount};
 
 #[derive(Accounts)]
 pub struct AmountToUiAmountContext<'info> {
@@ -296,4 +295,26 @@ pub struct TransferCheckedContext<'info> {
 
     /// CHECK: Can be either a signer or PDA
     pub authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct UiAmountToAmountContext<'info> {
+    /// CHECK: This is not dangerous because we check the key in the instruction
+    pub token_program_id: AccountInfo<'info>,
+
+    /// CHECK: Account owner is checked by the CPI to the token program
+    pub account: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CpiGuardContext<'info> {
+    /// CHECK: This is not dangerous because we check the key in the instruction
+    pub token_program_id: AccountInfo<'info>,
+
+    /// CHECK: Token account
+    #[account(mut)]
+    pub account: AccountInfo<'info>,
+
+    /// CHECK: Account owner is checked by the CPI to the token program
+    pub owner: AccountInfo<'info>,
 }

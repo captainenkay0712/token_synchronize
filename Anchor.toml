@@ -6,6 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
+custom_transfer_hook = "FQpzwCkunhGsTrxsBEaMsASqTqjAuGpnLWvgeVHxKd5P"
 token_synchronize = "G2LUVS7T6NeVEcRNgGFdpnwhUKJj5MfermEu99hf7rEL"
 
 [registry]

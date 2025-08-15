@@ -31,4 +31,16 @@ pub enum ErrorCode {
 
     #[msg("TokenSynchronize: Token 2022's transfer function is deprecated")]
     Token2022TransferDeprecated,
+
+    #[msg("TokenSynchronize: Invalid extra accounts")]
+    InvalidExtraAccounts,
+
+    #[msg("TokenSynchronize: Missing fee")]
+    MissingFee,
+
+    #[msg("TokenSynchronize: Authority is not signer")]
+    AuthorityNotSigner,
+
+    #[msg("TokenSynchronize: Missing signer")]
+    MissingSigner,
 }
