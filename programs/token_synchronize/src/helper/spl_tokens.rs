@@ -95,6 +95,8 @@ pub fn transfer<'info>(
     let _pid = token_program_id.key();
 
     require_eq!(*mint.owner, _pid, ErrorCode::InvalidTokenProgram);
+    require_keys_eq!(*source.owner, _pid, ErrorCode::InvalidTokenProgram);
+    require_keys_eq!(*destination.owner, _pid, ErrorCode::InvalidTokenProgram);
 
     let mut _ix: Instruction;
     let mut _infos: Vec<AccountInfo<'info>> = vec![
