@@ -30,16 +30,15 @@ mod token_synchronize {
 
     use super::*;
 
-
     // --- Transfer Different Token Program Instructions ---
     pub fn transfer_unified<'info>(
         ctx: Context<'_, '_, '_, 'info, TransferCheckedContext<'info>>,
         amount: u64,
     ) -> Result<()> {
-        crate::helper::spl_tokens::transfer(
+        crate::helper::spl_tokens::transfer_without_mint(
             &ctx.accounts.token_program_id,
             &ctx.accounts.from,
-            &ctx.accounts.mint,
+            // &ctx.accounts.mint,
             &ctx.accounts.to,
             &ctx.accounts.authority,
             &[],
