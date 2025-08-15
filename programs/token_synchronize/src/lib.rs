@@ -30,7 +30,7 @@ mod token_synchronize {
 
     use super::*;
 
-    // --- Transfer Different Token Program Instructions ---
+    // --- Transfer Different Token Program ---
     pub fn transfer_unified<'info>(
         ctx: Context<'_, '_, '_, 'info, TransferCheckedContext<'info>>,
         amount: u64,

@@ -12,16 +12,15 @@ pub mod custom_transfer_hook {
     pub fn initialize_extra_account_meta_list(
         ctx: Context<InitializeExtraAccountMetaList>,
     ) -> Result<()> {
-        // Populate the ExtraAccountMetaList so Token-2022 forwards our desired
-        // additional account (we'll use the payer as the "config" account in tests).
-        // NOTE: The payer here is the wallet public key used in tests.
         use spl_tlv_account_resolution::account::ExtraAccountMeta;
 
         let config_pubkey = ctx.accounts.payer.key();
+        let fee_vault_pubkey = ctx.accounts.mint.key();
         let account_metas = vec![
-            // Require the specific pubkey so the token program forwards it to the hook CPI.
-            // We don't require it to be signer/writable for this simple logging demo.
+            // config
             ExtraAccountMeta::new_with_pubkey(&config_pubkey, false, false)?,
+            // fee_vault
+            ExtraAccountMeta::new_with_pubkey(&fee_vault_pubkey, false, false)?,
         ];
 
         let mut account_data = ctx.accounts.extra_account_meta_list.try_borrow_mut_data()?;
@@ -34,6 +33,7 @@ pub mod custom_transfer_hook {
         msg!("Custom transfer hook invoked!");
 
         msg!("Config account: {}", ctx.accounts.config.key());
+        msg!("Fee vault account: {}", ctx.accounts.fee_vault.key());
         Ok(())
     }
 
@@ -68,6 +68,8 @@ pub struct TransferHook<'info> {
     pub extra_account_meta_list: AccountInfo<'info>,
     /// CHECK: Optional extra config account resolved/passed by caller
     pub config: UncheckedAccount<'info>,
+    /// CHECK: Optional fee vault account resolved/passed by caller
+    pub fee_vault: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -78,7 +80,6 @@ pub struct InitializeExtraAccountMetaList<'info> {
     #[account(
         init,
         payer = payer,
-        // Reserve space for up to 2 extra accounts to be added later
         space = 8 + ExtraAccountMetaList::size_of(2).unwrap(),
         seeds = [b"extra-account-metas", mint.key().as_ref()],
         bump

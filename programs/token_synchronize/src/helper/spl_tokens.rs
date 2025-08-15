@@ -57,11 +57,11 @@ fn compute_expected_fee(mint_transfer_fee: &TransferFeeConfig, amount: u64) -> R
     Ok(_expected_fee)
 }
 
-fn append_hook_accounts<'info>(ix: &mut Instruction, infos: &mut Vec<AccountInfo<'info>>, extra_accounts: &[AccountInfo<'info>], hook_program_id: &Pubkey) -> Result<()> {
+fn append_hook_accounts<'info>(ix: &mut Instruction, infos: &mut Vec<AccountInfo<'info>>, extra_accounts: &[AccountInfo<'info>], hook_program_id: Pubkey) -> Result<()> {
     require!(!extra_accounts.is_empty(), ErrorCode::InvalidExtraAccounts);
 
     let _hook_program_ai = &extra_accounts[0];
-    require_keys_eq!(*_hook_program_ai.key, *hook_program_id, ErrorCode::InvalidExtraAccounts);
+    require_keys_eq!(*_hook_program_ai.key, hook_program_id, ErrorCode::InvalidExtraAccounts);
     require!(_hook_program_ai.executable, ErrorCode::InvalidExtraAccounts);
 
     let mut _metas = ix.accounts.clone();
@@ -136,7 +136,7 @@ pub fn transfer<'info>(
             )?;
         }
         _id if _id == spl_token_2022::ID => {
-            let _mint = StateWithExtensions::<Mint>::unpack(_data.as_ref())?;
+            let _mint: StateWithExtensions<'_, Mint> = StateWithExtensions::<Mint>::unpack(_data.as_ref())?;
 
             if let Ok(_mint_transfer_fee) = _mint.get_extension::<TransferFeeConfig>() {
                 _ix = spl_token_2022::extension::transfer_fee::instruction::transfer_checked_with_fee(
@@ -164,7 +164,10 @@ pub fn transfer<'info>(
             }
 
             if let Ok(_mint_transfer_hook) = _mint.get_extension::<TransferHook>() {
-                append_hook_accounts(&mut _ix, &mut _infos, &extra_accounts, &_mint_transfer_hook.program_id.0)?;
+                let _hook_program_id = _mint_transfer_hook.program_id.0;
+                drop(_data);
+                
+                append_hook_accounts(&mut _ix, &mut _infos, &extra_accounts, _hook_program_id)?;
             }
         }
         _ => return Err(error!(ErrorCode::InvalidTokenProgram)),

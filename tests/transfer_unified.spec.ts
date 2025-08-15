@@ -324,6 +324,7 @@ describe("transfer_unified", () => {
         { pubkey: customTransferHookProgram.programId, isWritable: false, isSigner: false },
         { pubkey: extraAccountMetaList, isWritable: false, isSigner: false },
         { pubkey: wallet.publicKey, isWritable: false, isSigner: false },
+        { pubkey: mintKeypair.publicKey, isWritable: false, isSigner: false },
       ])
       .rpc();
 
@@ -426,6 +427,7 @@ describe("transfer_unified", () => {
         { pubkey: customTransferHookProgram.programId, isWritable: false, isSigner: false },
         { pubkey: extraAccountMetaList, isWritable: false, isSigner: false },
         { pubkey: wallet.publicKey, isWritable: false, isSigner: false },
+        { pubkey: mintKeypair.publicKey, isWritable: false, isSigner: false },
       ])
       .rpc();
 
@@ -435,7 +437,7 @@ describe("transfer_unified", () => {
     });
 
     const logs = tx?.meta?.logMessages?.join("\n");
-    // console.log(logs);
+    console.log(logs);
 
     const afterFrom = await getAccount(connection, fromAta, undefined, TOKEN_2022_PROGRAM_ID);
     const afterTo = await getAccount(connection, toAta, undefined, TOKEN_2022_PROGRAM_ID);
