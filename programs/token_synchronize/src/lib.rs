@@ -12,7 +12,6 @@ use anchor_lang::solana_program::{
 };
 use anchor_spl::{token, token_2022, token_2022_extensions};
 use std::convert::TryFrom;
-// use spl_token_2022::extension::ExtensionType;
 
 use crate::context::*;
 use crate::cpi::*;
@@ -26,7 +25,6 @@ declare_id!("G2LUVS7T6NeVEcRNgGFdpnwhUKJj5MfermEu99hf7rEL");
 
 #[program]
 mod token_synchronize {
-    use anchor_spl::token_2022_extensions;
 
     use super::*;
 

@@ -43,4 +43,7 @@ pub enum ErrorCode {
 
     #[msg("TokenSynchronize: Missing signer")]
     MissingSigner,
+
+    #[msg("TokenSynchronize: Invalid token mint")]
+    InvalidTokenMint,
 }

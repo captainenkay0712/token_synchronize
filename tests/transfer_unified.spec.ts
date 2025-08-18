@@ -437,7 +437,7 @@ describe("transfer_unified", () => {
     });
 
     const logs = tx?.meta?.logMessages?.join("\n");
-    console.log(logs);
+    // console.log(logs);
 
     const afterFrom = await getAccount(connection, fromAta, undefined, TOKEN_2022_PROGRAM_ID);
     const afterTo = await getAccount(connection, toAta, undefined, TOKEN_2022_PROGRAM_ID);

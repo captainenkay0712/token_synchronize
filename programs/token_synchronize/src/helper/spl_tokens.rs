@@ -124,6 +124,14 @@ pub fn transfer<'info>(
         _id if _id == spl_token::ID => {
             let _mint = spl_token::state::Mint::unpack(_data.as_ref())?;
 
+            let source_account = spl_token::state::Account::unpack(&source.data.borrow())?;
+            let destination_account = spl_token::state::Account::unpack(&destination.data.borrow())?;
+
+            require_keys_eq!(source_account.mint, mint.key(), ErrorCode::InvalidTokenMint);
+            require_keys_eq!(destination_account.mint, mint.key(), ErrorCode::InvalidTokenMint);
+
+            require!(source_account.amount >= amount, ErrorCode::InsufficientFunds);
+
             _ix = spl_token::instruction::transfer_checked(
                 &_pid,
                 &source.key(),
@@ -137,6 +145,20 @@ pub fn transfer<'info>(
         }
         _id if _id == spl_token_2022::ID => {
             let _mint: StateWithExtensions<'_, Mint> = StateWithExtensions::<Mint>::unpack(_data.as_ref())?;
+
+            let source_data = source.try_borrow_data()?;
+            let destination_data = destination.try_borrow_data()?;
+
+            let source_account: StateWithExtensions<'_, spl_token_2022::state::Account> =
+                StateWithExtensions::<spl_token_2022::state::Account>::unpack(&source_data)?;
+
+            let destination_account: StateWithExtensions<'_, spl_token_2022::state::Account> =
+                StateWithExtensions::<spl_token_2022::state::Account>::unpack(&destination_data)?;
+
+            require_keys_eq!(source_account.base.mint, mint.key(), ErrorCode::InvalidTokenMint);
+            require_keys_eq!(destination_account.base.mint, mint.key(), ErrorCode::InvalidTokenMint);
+
+            require!(source_account.base.amount >= amount, ErrorCode::InsufficientFunds);
 
             if let Ok(_mint_transfer_fee) = _mint.get_extension::<TransferFeeConfig>() {
                 _ix = spl_token_2022::extension::transfer_fee::instruction::transfer_checked_with_fee(
@@ -166,7 +188,7 @@ pub fn transfer<'info>(
             if let Ok(_mint_transfer_hook) = _mint.get_extension::<TransferHook>() {
                 let _hook_program_id = _mint_transfer_hook.program_id.0;
                 drop(_data);
-                
+
                 append_hook_accounts(&mut _ix, &mut _infos, &extra_accounts, _hook_program_id)?;
             }
         }
