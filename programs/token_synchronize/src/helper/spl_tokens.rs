@@ -66,9 +66,10 @@ fn append_hook_accounts<'info>(ix: &mut Instruction, infos: &mut Vec<AccountInfo
 
     let mut metas = ix.accounts.clone();
     for account in extra_accounts.iter() {
-        match account.is_writable {
-            true => metas.push(AccountMeta::new(*account.key, account.is_signer)),
-            false => metas.push(AccountMeta::new_readonly(*account.key, account.is_signer)),
+        if account.is_writable {
+            metas.push(AccountMeta::new(*account.key, account.is_signer));
+        } else {
+            metas.push(AccountMeta::new_readonly(*account.key, account.is_signer));
         }
     }
 
@@ -195,10 +196,11 @@ pub fn transfer<'info>(
         _ => return Err(error!(ErrorCode::InvalidTokenProgram)),
     }
 
-    match authority_seeds.is_empty() {
-        true => invoke(&ix, &infos)?,
-        false => invoke_signed(&ix, &infos, &authority_seeds)?,
-    }
+    let result = if authority_seeds.is_empty() {
+        invoke(&ix, &infos)
+    } else {
+        invoke_signed(&ix, &infos, &authority_seeds)
+    };
 
-    Ok(())
+    result.map_err(Into::into)
 }
